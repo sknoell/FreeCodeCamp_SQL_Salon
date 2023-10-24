@@ -8,37 +8,28 @@ MAIN_MENU() {
     if [[ $1 ]]; then
         echo -e "\n$1"
     fi
-
-    DISPLAY_SERVICES
-}
-
-DISPLAY_SERVICES() {
-     if [[ $1 ]]; then
-        echo -e "\n$1"
-    fi
-    echo -e "\nHere are the services we have available:"
+    
     AVAILABLE_SERVICES=$($PSQL "select service_id,name from services order by service_id;")
     echo "$AVAILABLE_SERVICES" | while read SERVICE_ID BAR NAME; do
         echo "$SERVICE_ID) $NAME"
     done
-}
-CHOOSE_SERVICE(){
     echo "Choose a service"
     read SERVICE_ID_SELECTED
-
-    if [[ ! $SERVICE_ID_SELECTED =~ ^[0-9]+$ ]]; then
+     if [[ ! $SERVICE_ID_SELECTED =~ ^[0-9]+$ ]]; then
         # send to main menu
-        DISPLAY_SERVICES "That is not a valid service number."
+        MAIN_MENU "That is not a valid service number."
     fi
-
     SERVICE_ID=$($PSQL "select service_id from services where service_id=$SERVICE_ID_SELECTED order by service_id")
 
     # check if service in database
     if [[ -z $SERVICE_ID ]]; then
-        MAIN_MENU "Service with number does not exist."
-
+        MAIN_MENU "I could not find that service. What would you like today?"
     else
-        # get customer info
+        GET_CUSTOMER
+    fi
+    
+}
+GET_CUSTOMER(){
         echo -e "\nWhat's your phone number?"
         read CUSTOMER_PHONE_INPUT
 
@@ -59,7 +50,7 @@ CHOOSE_SERVICE(){
             INSERT_APPOINTMENT=$($PSQL "insert into appointments(customer_id,service_id,time) values($CUSTOMER_ID,$SERVICE_ID,'$SERVICE_TIME')")
             #Final note I put you down
             SERVICE_NAME=$($PSQL "select name from services where service_id=$SERVICE_ID")
-            echo "I have put you down for a $(echo $SERVICE_NAME | sed -r 's/^ *| *$//g') at $SERVICE_TIME, $(echo $CUSTOMER_NAME | sed -r 's/^ *| *$//g')."
+            echo "I have put you down for a $(echo $SERVICE_NAME | sed -E 's/^ *| *$//g') at $SERVICE_TIME, $(echo $CUSTOMER_NAME | sed -E 's/^ *| *$//g')."
         else
             #Customer already exists in db
             echo -e "\nAt what time?"
@@ -71,17 +62,10 @@ CHOOSE_SERVICE(){
             #Final note I put you down
             SERVICE_NAME=$($PSQL "select name from services where service_id=$SERVICE_ID")
             CUSTOMER_NAME=$($PSQL "select name from customers where customer_id=$CUSTOMER_ID")
-            echo "I have put you down for a $(echo $SERVICE_NAME | sed -r 's/^ *| *$//g') at $SERVICE_TIME, $(echo $CUSTOMER_NAME | sed -r 's/^ *| *$//g')."
+            echo "I have put you down for a $(echo $SERVICE_NAME | sed -E 's/^ *| *$//g') at $SERVICE_TIME, $(echo $CUSTOMER_NAME | sed -E 's/^ *| *$//g')."
         fi
 
-    fi
-
-}
-
-EXIT() {
-  echo -e "\nThank you for stopping in.\n"
 }
 
 MAIN_MENU
-CHOOSE_SERVICE
-EXIT
+
